@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space), var(--font-manrope), ui-sans-serif, sans-serif;
+
+  --color-paper: #f5f2ea;
+  --color-card: #fdfbf6;
+  --color-ink: #212b2c;
+  --color-inksoft: #5f6a68;
+  --color-inkfaint: #8a9391;
+  --color-line: #e1dbcb;
+  --color-linesoft: #ebe6d8;
+
+  --color-petrol-950: #0a2624;
+  --color-petrol-900: #0e3834;
+  --color-petrol-800: #144944;
+  --color-petrol-700: #1b5a52;
+  --color-petrol-600: #256e62;
+  --color-petrol-200: #bcd6cd;
+  --color-petrol-100: #ddeae4;
+  --color-petrol-50: #eef4f0;
+
+  --color-brass-700: #8f5a1e;
+  --color-brass-600: #b4762a;
+  --color-brass-100: #f4e7d3;
+  --color-brass-50: #faf3e7;
+
+  --color-danger-700: #93321f;
+  --color-danger-600: #b3402e;
+  --color-danger-100: #f5ddd6;
+  --color-danger-50: #fbefeb;
+
+  --color-good-700: #2f6a3a;
+  --color-good-600: #3a7d44;
+  --color-good-100: #dcead8;
+  --color-good-50: #eef5ea;
+
+  --color-warn-700: #8a5b14;
+  --color-warn-600: #a96f1c;
+  --color-warn-100: #f3e5c8;
+  --color-warn-50: #faf3e2;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  background-image: radial-gradient(rgba(14, 56, 52, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+::selection {
+  background: #bcd6cd;
+}
+
+.nice-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: #cfc9b8;
+  border-radius: 8px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input[type="range"] {
+  accent-color: var(--color-petrol-700);
+}
+input[type="checkbox"],
+input[type="date"] {
+  accent-color: var(--color-petrol-700);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.pop-in {
+  animation: pop-in 0.16s ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fade-in 0.2s ease-out both;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm 8mm 8mm 8mm;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  aside,
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    background: #fff !important;
+  }
+  .print-block {
+    display: block !important;
+  }
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+  }
+}

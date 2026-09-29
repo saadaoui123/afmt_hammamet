@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 200" width="500" height="200" fill="none">
+  <!-- Sweeping gold and silver swoosh -->
+  <path d="M320 12 C410 16, 480 62, 410 134 C385 158, 335 168, 285 160 C375 156, 465 112, 435 42 C415 12, 360 8, 320 12 Z" fill="#eab308" />
+  <path d="M335 24 C390 32, 445 68, 420 108 C440 66, 400 32, 350 28 Z" fill="#94a3b8" />
+
+  <!-- AFMT letters in azure blue -->
+  <path d="M70 144 L152 24 H192 L146 100 H218 L204 122 H134 L120 144 H70 Z" fill="#0284c7" />
+  <polygon points="166,54 150,80 186,80" fill="#ffffff" />
+  <path d="M192 24 H304 L294 48 H228 L218 72 H284 L274 96 H208 L184 144 H150 Z" fill="#0284c7" />
+  <path d="M20 144 L60 88 L94 126 L144 66 L116 144 H82 L68 122 L50 144 Z" fill="#0369a1" opacity="0.9" />
+  <path d="M246 100 H344 L334 122 L308 122 L298 144 H264 L274 122 L246 122 Z" fill="#0284c7" />
+
+  <!-- Yellow line -->
+  <rect x="15" y="168" width="470" height="6" rx="3" fill="#eab308" />
+</svg>
