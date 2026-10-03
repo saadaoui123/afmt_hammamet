@@ -51,7 +51,15 @@ export function shortSubject(name: string): string {
 }
 
 export default function PlanningView() {
-  const { db, active, toast, setView, refresh } = useApp();
+  const { db } = useApp();
+  // Les hooks du composant interne ne doivent pas être appelés après un retour conditionnel.
+  if (!db) return null;
+  return <PlanningViewInner />;
+}
+
+function PlanningViewInner() {
+  const { db: maybeDb, active, toast, setView, refresh } = useApp();
+  const db = maybeDb!; // garanti non nul par le composant parent
   const [tab, setTab] = useState<Tab>("principal");
   const [mode, setMode] = useState<DisplayMode>("capture_client");
   const [roomCat, setRoomCat] = useState<RoomCategoryFilter>("all");
@@ -70,7 +78,6 @@ export default function PlanningView() {
   // Seuil statutaire global par défaut (ex: 18h)
   const [statutoryBaseOverride, setStatutoryBaseOverride] = useState<number | null>(null);
 
-  if (!db) return null;
   const slots = buildSlots(db.settings.boundaries);
   const version = db.versions.find((v) => v.id === db.settings.activeVersionId);
   const conflicts = useMemo(() => findConflicts(active, ctxFor(db)), [db, active]);
@@ -178,7 +185,7 @@ export default function PlanningView() {
   // -------------------------------------------------------------
   // EXPORT EXCEL OFFICIEL SELON LA STRUCTURE EXACTE DES CAPTURES
   // -------------------------------------------------------------
-  const onExport = () => {
+  const onExport = async () => {
     const recapRows: Array<Array<string | number>> = [];
     recapRows.push(["TABLEAU RECAP FORMATION — INSTITUT DE FORMATION DANS LES MÉTIERS DU TOURISME (IFMT) HAMMAMET"]);
     recapRows.push([
@@ -358,7 +365,7 @@ export default function PlanningView() {
       },
     ];
 
-    exportExcel(sheets, `IFMT-Planning-Officiel-${version?.label.replace(/\s+/g, "-") ?? "export"}.xlsx`);
+    await exportExcel(sheets, `IFMT-Planning-Officiel-${version?.label.replace(/\s+/g, "-") ?? "export"}.xlsx`);
     toast("Export Excel officiel (Tableau Récap + 3 Vues Dérivées) généré avec succès.", "good");
   };
 

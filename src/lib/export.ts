@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 
 export interface Sheet {
   name: string;
@@ -6,7 +5,9 @@ export interface Sheet {
   merges?: Array<{ s: { r: number; c: number }; e: { r: number; c: number } }>;
 }
 
-export function exportExcel(sheets: Sheet[], filename: string) {
+/** xlsx est chargé à la demande : il n'alourdit plus le bundle initial. */
+export async function exportExcel(sheets: Sheet[], filename: string) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   for (const s of sheets) {
     const ws = XLSX.utils.aoa_to_sheet(s.rows);

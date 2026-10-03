@@ -15,9 +15,15 @@ const ACTION_TONES: Record<string, "good" | "brass" | "danger" | "petrol" | "war
 
 export default function JournalView() {
   const { db } = useApp();
+  if (!db) return null;
+  return <JournalViewInner />;
+}
+
+function JournalViewInner() {
+  const { db: maybeDb } = useApp();
+  const db = maybeDb!; // garanti non nul par le composant parent
   const [search, setSearch] = useState("");
   const [entity, setEntity] = useState("all");
-  if (!db) return null;
 
   const rows = useMemo(() => {
     const list = [...db.audit].reverse();

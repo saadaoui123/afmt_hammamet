@@ -8,7 +8,7 @@ import {
   isTpRoomCompatible,
   type Candidate,
 } from "./conflicts";
-import { buildSlots, decomposeHours, windowsFor } from "./time";
+import { buildSlots, decomposeHours, overlaps, windowsFor } from "./time";
 
 interface Session {
   key: string;
@@ -30,6 +30,7 @@ export function solve(data: Database, keep?: Assignment[]): SolveResult {
   const { slots, data: d } = ctx;
   const blocking: string[] = [];
   const unplaced: UnplacedSession[] = [];
+  const failed: Array<{ s: Session; reasons: string[] }> = [];
 
   // ----- Pré-vérifications de faisabilité -----
   const compHours = new Map<string, number>();
@@ -252,14 +253,111 @@ export function solve(data: Database, keep?: Assignment[]): SolveResult {
       consumeKeep(keepKey, best.cand.day, best.cand.startSlot, best.cand.instructorId, best.cand.roomId);
     } else {
       const reasons = [...reasonBag.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map((x) => x[0]);
-      unplaced.push({
-        teachingId: s.teachingId,
-        groupId: s.groupId,
-        subjectId: s.subjectId,
-        hours: s.hours,
-        reasons: reasons.length ? reasons : ["Aucun créneau compatible ne reste disponible."],
-      });
+      failed.push({ s, reasons: reasons.length ? reasons : ["Aucun créneau compatible ne reste disponible."] });
     }
+  }
+
+  // ----- Backtracking : chaînes d'éjection -----
+  // Pour une séance sans place, on cherche un créneau bloqué par 1 ou 2 séances déjà placées ;
+  // on les déplace (récursivement, profondeur limitée) vers d'autres combinaisons valides.
+  // Toute tentative qui échoue est annulée : le planning reste valide à chaque instant.
+  const OVERLAP_CODES = new Set(["INSTRUCTOR_OVERLAP", "GROUP_OVERLAP", "ROOM_OVERLAP"]);
+  const MAX_DEPTH = 3;
+  let nodes = 0;
+  const NODE_BUDGET = 60000;
+  const sessionOf = (a: Assignment): Session => ({
+    key: `bt:${a.id}`,
+    teachingId: a.teachingId ?? 0,
+    groupId: a.groupId,
+    subjectId: a.subjectId,
+    hours: a.hours,
+    kind: a.kind,
+  });
+  const enumerate = (s: Session): Candidate[] => {
+    const out: Candidate[] = [];
+    const qual = qualifiedOf(s.subjectId);
+    const rms = roomsOf(s.subjectId, s.groupId);
+    for (const day of d.settings.enabledDays)
+      for (const win of windowsFor(slots, s.hours))
+        for (const inst of qual)
+          for (const room of rms)
+            out.push({
+              day,
+              startSlot: win[0].index,
+              hours: s.hours,
+              kind: s.kind,
+              groupId: s.groupId,
+              subjectId: s.subjectId,
+              instructorId: inst.id,
+              roomId: room.id,
+              teachingId: s.teachingId,
+            });
+    return out;
+  };
+  const tryPlace = (s: Session, depth: number, protect: Set<number>): boolean => {
+    const cands = enumerate(s);
+    // 1. placement direct
+    let best: { cand: Candidate; score: number } | null = null;
+    for (const cand of cands) {
+      if (nodes++ > NODE_BUDGET) return false;
+      if (checkCandidate(cand, placed, ctx)) continue;
+      const sc = candidateScore(s, cand, "");
+      if (!best || sc > best.score) best = { cand, score: sc };
+    }
+    if (best) {
+      addPlaced(best.cand);
+      return true;
+    }
+    if (depth <= 0) return false;
+    // 2. éjection de 1 à 2 séances bloquantes
+    const options: Array<{ cand: Candidate; blockers: Assignment[] }> = [];
+    for (const cand of cands) {
+      if (nodes++ > NODE_BUDGET) break;
+      const err = checkCandidate(cand, placed, ctx);
+      if (!err || !OVERLAP_CODES.has(err.code)) continue;
+      const w = windowInterval(slots, cand.startSlot, cand.hours);
+      if (!w) continue;
+      const conflicting = placed.filter((a) => {
+        if (a.day !== cand.day) return false;
+        if (a.instructorId !== cand.instructorId && a.groupId !== cand.groupId && a.roomId !== cand.roomId) return false;
+        const aw = windowInterval(slots, a.startSlot, a.hours);
+        return !!aw && overlaps(w.startMin, w.endMin, aw.startMin, aw.endMin);
+      });
+      if (conflicting.length === 0 || conflicting.length > 2) continue;
+      if (conflicting.some((a) => protect.has(a.id))) continue;
+      const others = placed.filter((a) => !conflicting.includes(a));
+      if (checkCandidate(cand, others, ctx)) continue;
+      options.push({ cand, blockers: conflicting });
+    }
+    options.sort((x, y) => x.blockers.length - y.blockers.length);
+    for (const opt of options.slice(0, 12)) {
+      const snapshot = placed.slice();
+      for (const b of opt.blockers) placed.splice(placed.indexOf(b), 1);
+      const mine = addPlaced(opt.cand);
+      const protect2 = new Set(protect).add(mine.id);
+      if (opt.blockers.every((b) => tryPlace(sessionOf(b), depth - 1, protect2))) return true;
+      placed.length = 0;
+      placed.push(...snapshot);
+      if (nodes > NODE_BUDGET) return false;
+    }
+    return false;
+  };
+  for (const f of failed) {
+    // Le placement direct a déjà échoué dans la phase gloutonne : seules les éjections peuvent aider.
+    const snapshot = placed.slice();
+    if (tryPlace(f.s, MAX_DEPTH, new Set())) continue;
+    placed.length = 0;
+    placed.push(...snapshot);
+    unplaced.push({
+      teachingId: f.s.teachingId,
+      groupId: f.s.groupId,
+      subjectId: f.s.subjectId,
+      hours: f.s.hours,
+      reasons: [
+        ...f.reasons,
+        `Aucune solution même après réaffectation des séances déjà placées (backtracking, profondeur ${MAX_DEPTH}, ${nodes} combinaisons testées).`,
+      ],
+    });
   }
 
   // ----- Recherche locale (contraintes souples) -----

@@ -4,6 +4,8 @@ import * as S from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { loadDb, logAudit } from "@/server/load";
 import { solve } from "@/lib/solver";
+import { validatePlanning } from "@/lib/validator";
+import type { Assignment } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,6 +28,18 @@ export async function POST(req: Request) {
   const t0 = Date.now();
   const res = solve(data, keep);
   const ms = Date.now() - t0;
+
+  // Validateur indépendant : un planning qui viole une contrainte obligatoire n'est jamais enregistré.
+  const candidate = res.assignments.map((a, i) => ({ ...a, id: i + 1, versionId: 0 })) as Assignment[];
+  const report = validatePlanning(data, candidate);
+  if (!report.valid)
+    return NextResponse.json(
+      {
+        error: "Planning non validé : une contrainte obligatoire est violée.",
+        violations: report.errors.map((v) => v.message),
+      },
+      { status: 422 }
+    );
 
   const stamp = new Date().toLocaleDateString("fr-FR") + " " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const [v] = await db
@@ -56,5 +70,5 @@ export async function POST(req: Request) {
     `Nouvelle version « ${v.label} » — score ${res.score}/100, ${res.assignments.length} séances placées, ${res.unplaced.length} non placées, en ${ms} ms${keepCurrent ? " (régénération incrémentale)" : ""}`
   );
 
-  return NextResponse.json({ version: v, result: res, ms });
+  return NextResponse.json({ version: v, result: res, ms, validation: { valid: report.valid, complete: report.complete, warnings: report.warnings.map((w) => w.message), overtime: report.overtime } });
 }

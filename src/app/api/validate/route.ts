@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { loadDb } from "@/server/load";
 import { checkCandidate, ctxFor, type Candidate } from "@/lib/conflicts";
+import { validateMove } from "@/lib/validator";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +25,13 @@ export async function POST(req: Request) {
   const ctx = ctxFor(data);
   const err = checkCandidate(a, active, ctx);
   if (err) return NextResponse.json({ ok: false, conflicts: [err] });
+
+  // Seconde vérification par le validateur indépendant (déplacement d'une séance existante).
+  if (a.id) {
+    const all = data.assignments.filter((x) => x.versionId === data.settings.activeVersionId);
+    const mv = validateMove(data, all, { id: a.id, day: a.day, startSlot: a.startSlot, roomId: a.roomId, instructorId: a.instructorId, groupId: a.groupId });
+    if (!mv.ok)
+      return NextResponse.json({ ok: false, conflicts: mv.reasons.map((message) => ({ code: "VALIDATOR", message })) });
+  }
   return NextResponse.json({ ok: true, conflicts: [] });
 }
